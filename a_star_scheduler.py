@@ -1,5 +1,7 @@
 import heapq
 from problem_model import ORDER, SLOTS, COST, INITIAL, is_goal, is_valid
+from itertools import product
+from problem_model import conflicts
 
 INF = float("inf")
 
@@ -59,6 +61,25 @@ def reconstruct(goal, parent):
         goal = parent[goal]
     return path[::-1]
 
+def brute_force():
+    best_cost = INF
+    best_schedules = []
+    for combo in product(SLOTS, repeat=len(ORDER)):
+        #skip any assignment where two conflicting exams share a slot
+        clash = any(
+            combo[i] == combo[j] and conflicts(ORDER[i], ORDER[j])
+            for i in range(len(ORDER))
+            for j in range(i + 1, len(ORDER))
+        )
+        if clash:
+            continue
+        cost = sum(COST[e][s] for e, s in zip(ORDER, combo)) 
+        if cost < best_cost:
+            best_cost, best_schedules = cost, [combo]
+        elif cost == best_cost:
+            best_schedules.append(combo)
+    return best_cost, best_schedules
+
 if __name__ == "__main__":
     goal, total_cost, expanded, parent = astar()
     if goal is None:
@@ -70,3 +91,8 @@ if __name__ == "__main__":
         print("Total cost:", total_cost)
         print("States expanded:", expanded)
         print("Path:", reconstruct(goal, parent))
+
+        bf_cost, bf_schedules = brute_force()
+        print("Brute-force minimum cost:", bf_cost)
+        print("Optimal schedules:", bf_schedules)
+        print("A* matches brute force:", total_cost == bf_cost)
